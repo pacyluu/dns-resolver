@@ -4,6 +4,12 @@ from dataclasses import dataclass
 import struct
 from typing import List
 from io import BytesIO
+import socket
+random.seed(1)
+TYPE_A = 1
+TYPE_NS = 2
+CLASS_IN = 1
+
 
 @dataclass
 class DNSHeader:
@@ -51,12 +57,6 @@ def encode_dns_name(domain_name: str) -> bytes:
     encoded.append(b"\x00")
     return b"".join(encoded)
     
-
-random.seed(1)
-
-TYPE_A = 1
-CLASS_IN = 1
-
 #Test one query
 def build_query(domain_name, record_type):
     name = encode_dns_name(domain_name)
@@ -66,31 +66,13 @@ def build_query(domain_name, record_type):
     question = DNSQuestion(name=name, type_=record_type, class_=CLASS_IN)
     return header_to_bytes(header) + question_to_bytes(question)
 
+def send_query(ip_address, domain_name, record_type):
+    query = build_query(domain_name, record_type)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(query, (ip_address, 53))
 
-# bit 0 end
-
-# bit 5	AA	Authoritative Answer	[RFC1035]
-# bit 6	TC	Truncated Response	[RFC1035]
-# bit 7	RD	Recursion Desired	[RFC1035]
-# bit 8	RA	Recursion Available	[RFC1035]
-# bit 9		Reserved	
-# bit 10	AD	Authentic Data	[RFC4035][RFC6840][RFC Errata 4924]
-# bit 11	CD	Checking Disabled
-
-
-#bit 15 start
-
-import socket
-
-query = build_query("www.example.com", 1)
-
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-sock.sendto(query, ("8.8.8.8", 53))
-response, addr = sock.recvfrom(1024)
-
-print(f"Received {response} from {addr}")
+    data, _ = sock.recvfrom(1024)
+    return parse_dns_packet(data)
 
 def parse_header(reader):
     data = reader.read(12)
@@ -146,13 +128,35 @@ def parse_dns_packet(data) -> DNSPacket:
 
 def ip_to_string(ip) -> str:
     return ".".join([str(x) for x in ip])
-
-def lookup_domain(domain_name):
-    query = build_query(domain_name, TYPE_A)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(query, ("8.8.8.8", 53))
-
-    # get the response
-    data, _ = sock.recvfrom(1024)
-    response = parse_dns_packet(data)
-    return ip_to_string(response.answers[0].data)
+        
+def get_answer(packet):
+    # return the first A record in the Answer section
+    for x in packet.answers:
+        if x.type_ == TYPE_A:
+            return x.data
+        
+def get_nameserver_ip(packet):
+    # return the first A record in the Additional section
+    for x in packet.additionals:
+        if x.type_ == TYPE_A:
+            return x.data
+        
+def get_nameserver(packet):
+    # return the first NS record in the Authority section
+    for x in packet.authorities:
+        if x.type_ == TYPE_NS:
+            return x.data.decode('utf-8')
+        
+def resolve(domain_name, record_type):
+    nameserver = "198.41.0.4"
+    while True:
+        print(f"Querying {nameserver} for {domain_name}")
+        response = send_query(nameserver, domain_name, record_type)
+        if ip := get_answer(response):
+            return ip
+        elif nsIP := get_nameserver_ip(response):
+            nameserver = nsIP
+        elif ns_domain := get_nameserver(response):
+            nameserver = resolve(ns_domain, TYPE_A)
+        else:
+            raise Exception("something went wrong")
