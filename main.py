@@ -26,7 +26,7 @@ class DNSRecord:
     type_: int                  # 2 byte
     class_: int                 # 2 byte
     ttl: int                    # 4 byte
-    data: bytes                 # 2 byte
+    data: bytes                 
 
 @dataclass
 class DNSPacket:
@@ -126,3 +126,33 @@ def decode_compressed_name(length, reader):
     result = decode_name(reader)
     reader.seek(current_pos)
     return result
+
+def parse_record(reader):
+    name = decode_name(reader)
+    values = reader.read(10)
+    type_, class_, ttl, data_len = struct.unpack("!HHIH", values)       # Data len is the 2 byte value of the length of the string 
+    data = reader.read(data_len)                                        # Once we know the length of the string, we can read it
+    return DNSRecord(name, type_, class_, ttl, data)                    # Example in decimal: 11 192.168.1.2  11 chars, so 11 is prepended
+
+def parse_dns_packet(data) -> DNSPacket:
+    reader = BytesIO(data)
+    header = parse_header(reader)
+    questions = [parse_question(reader) for _ in range(header.num_questions)]
+    answers = [parse_record(reader) for _ in range(header.num_answers)]
+    authorities = [parse_record(reader) for _ in range(header.num_authorities)]
+    additionals = [parse_record(reader) for _ in range(header.num_additionals)]
+
+    return DNSPacket(header, questions, answers, authorities, additionals)
+
+def ip_to_string(ip) -> str:
+    return ".".join([str(x) for x in ip])
+
+def lookup_domain(domain_name):
+    query = build_query(domain_name, TYPE_A)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(query, ("8.8.8.8", 53))
+
+    # get the response
+    data, _ = sock.recvfrom(1024)
+    response = parse_dns_packet(data)
+    return ip_to_string(response.answers[0].data)
