@@ -92,18 +92,37 @@ response, addr = sock.recvfrom(1024)
 
 print(f"Received {response} from {addr}")
 
-# To see individual byte values
-print([hex(b) for b in response])
+def parse_header(reader):
+    data = reader.read(12)
+    items = struct.unpack("!HHHHHH", data)
+    return DNSHeader(*items)
 
-# def parse_header(reader):
-#     data = reader.read(12)
-#     items = struct.unpack("!HHHHHH", data)
-#     return DNSHeader(*items)
+def parse_question(reader):
+    name = decode_name(reader)
+    data = reader.read(4)
+    type_, class_ = struct.unpack("!HH", data)
+    return DNSQuestion(name, type_, class_)
 
-# def parse_question(reader):
-#     name = decode_name(reader)
-#     data = reader.read(4)
-#     type_, class_ = struct.unpack("!HH", data)
-#     return DNSQuestion(name, type_, class_)
+def decode_name(reader):
+    parts = []
 
-# def decode_name(reader):
+    while True:
+        length = reader.read(1)[0]
+        if length == 0:
+            break
+        if (length & 0b11000000) == 0b11000000:
+            parts.append(decode_compressed_name(length, reader))
+            break
+        else:
+            parts.append(reader.read(length))
+    
+    return b".".join(parts)
+
+def decode_compressed_name(length, reader):
+    second_byte = reader.read(1)[0]
+    pointer = ((length & 0b0011_1111) << 8) | second_byte     ## get rid of the 2 left bits and add the next 8 in
+    current_pos = reader.tell()
+    reader.seek(pointer)
+    result = decode_name(reader)
+    reader.seek(current_pos)
+    return result
