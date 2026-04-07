@@ -48,8 +48,9 @@ def encode_dns_name(domain_name: str) -> bytes:
     for part in domain_name.encode("ascii").split(b"."):
         encoded.append(bytes([len(part)]))
         encoded.append(part)
-    encoded.append("\x00")
-    b"".join(encoded)
+    encoded.append(b"\x00")
+    return b"".join(encoded)
+    
 
 random.seed(1)
 
@@ -79,28 +80,30 @@ def build_query(domain_name, record_type):
 
 #bit 15 start
 
-# import socket
+import socket
 
-# query = build_query("www.example.com", 1)
+query = build_query("www.example.com", 1)
 
 
-# sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# sock.sendto(query, ("8.8.8.8", 53))
-# response, addr = sock.recvfrom(1024)
+sock.sendto(query, ("8.8.8.8", 53))
+response, addr = sock.recvfrom(1024)
 
-# print(f"Received {response} from {addr}")
+print(f"Received {response} from {addr}")
 
-def parse_header(reader):
-    data = reader.read(12)
-    items = struct.unpack("!HHHHHH", data)
-    return DNSHeader(*items)
+# To see individual byte values
+print([hex(b) for b in response])
 
-def parse_question(reader):
-    name = decode_name(reader)
-    data = reader.read(4)
-    type_, class_ = struct.unpack("!HH", data)
-    return DNSQuestion(name, type_, class_)
+# def parse_header(reader):
+#     data = reader.read(12)
+#     items = struct.unpack("!HHHHHH", data)
+#     return DNSHeader(*items)
 
-def decode_name(reader):
-    
+# def parse_question(reader):
+#     name = decode_name(reader)
+#     data = reader.read(4)
+#     type_, class_ = struct.unpack("!HH", data)
+#     return DNSQuestion(name, type_, class_)
+
+# def decode_name(reader):
