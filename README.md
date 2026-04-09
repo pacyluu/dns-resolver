@@ -19,8 +19,6 @@ The application follows a straightforward pipeline:
 - NS
 - A
 
-If you have any requests to make, don't hesitate to contact me
-
 ### Prerequisites
 
 Make sure you have the following installed:
