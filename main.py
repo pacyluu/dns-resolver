@@ -162,12 +162,14 @@ def parse_dns_packet(data: bytes) -> DNSPacket:
 def get_answer(packet: DNSPacket):
     for record in packet.answers:
         if record.type_ == TYPE_A:
+            # print(record.type_)
             return record.data
 
 
 def get_nameserver_ip(packet: DNSPacket):
     for record in packet.additionals:
         if record.type_ == TYPE_A:
+            # print(packet.authorities[0].type_)
             return record.data
 
 
@@ -189,13 +191,15 @@ def resolve(domain_name: str, record_type: int):
         elif ns_ip := get_nameserver_ip(response):
             nameserver = ns_ip
         elif ns_domain := get_nameserver(response):
+            # print(3)
             nameserver = resolve(ns_domain, TYPE_A)
         else:
             raise Exception("something went wrong")
 
 
 def main():
-    print(resolve("google.com", TYPE_A))
+    query = input("Enter a domain: ")
+    print(resolve(query, TYPE_A))
 
 
 if __name__ == "__main__":
