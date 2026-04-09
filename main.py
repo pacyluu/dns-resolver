@@ -32,12 +32,15 @@ class DNSQuestion:
 
 @dataclass
 class DNSRecord:
-    name: bytes
-    type_: int
-    class_: int
-    ttl: int
-    data: object
+    name: bytes             
+    type_: int              #2 bytes
+    class_: int             #2 bytes
+    ttl: int                #4 bytes
+    data: object            #2 bytes ***
 
+# When receive a dns record, there is 2 bytes indicating length and then the data afterwords
+#
+# When we create a dns record, we just put the actual data in there.
 
 @dataclass
 class DNSPacket:
@@ -192,7 +195,7 @@ def resolve(domain_name: str, record_type: int):
 
 
 def main():
-    print(resolve("twitter.com", TYPE_A))
+    print(resolve("google.com", TYPE_A))
 
 
 if __name__ == "__main__":
