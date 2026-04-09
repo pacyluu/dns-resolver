@@ -33,8 +33,3 @@ From the project root, start the CLI with:
 ```
 python3 main.py
 ```
-
-### Demo
-
-> [!WARNING]
-> This project has many limitations.
