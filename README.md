@@ -31,3 +31,7 @@ From the project root, start the CLI with:
 ```
 python3 main.py
 ```
+
+## Demo
+
+![Image](https://github.com/user-attachments/assets/ad25f597-f81e-4636-8893-049445d5e7f2)
